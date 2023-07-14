@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_RS_RVCGRA
+	bool "RS RV-CGRA board"
+	depends on SOC_RISCV_VIRT
+	select CPU_HAS_FPU
+	select RISCV_ISA_RV32I
+

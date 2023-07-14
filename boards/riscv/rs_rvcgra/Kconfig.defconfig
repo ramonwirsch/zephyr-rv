@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_RS_RVCGRA
+
+config BOARD
+	default "rs_rvcgra"
+
+
+endif # BOARD_RS_RVCGRA
