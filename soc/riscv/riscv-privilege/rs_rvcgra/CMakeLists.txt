@@ -1,5 +1,3 @@
 # SPDX-License-Identifier: Apache-2.0
 
-config BOARD
-	default "rs_rvcgra"
-
+zephyr_sources(soc.c)

@@ -1,0 +1,24 @@
+# Copyright (c) 2020 Cobham Gaisler AB
+# SPDX-License-Identifier: Apache-2.0
+
+choice
+	prompt "RS RV-CGRA Systems"
+	depends on SOC_SERIES_RS_RVCGRA
+
+config SOC_RS_RVCGRA_IMA
+	bool "RS RV-CGRA SoC rv32ima"
+	select ATOMIC_OPERATIONS_BUILTIN
+	select INCLUDE_RESET_VECTOR
+	select RISCV_ISA_EXT_M
+	select RISCV_ISA_EXT_A
+
+config SOC_RS_RVCGRA_IMAF
+	bool "RS RV-CGRA SoC rv32imaf"
+	select ATOMIC_OPERATIONS_BUILTIN
+	select INCLUDE_RESET_VECTOR
+	select RISCV_ISA_EXT_M
+	select RISCV_ISA_EXT_A
+	select RISCV_ISA_EXT_F
+	select CPU_HAS_FPU
+
+endchoice
