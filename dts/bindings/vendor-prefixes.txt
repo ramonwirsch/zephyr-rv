@@ -693,6 +693,7 @@ zephyr	Zephyr-specific binding
 zidoo	Shenzhen Zidoo Technology Co., Ltd.
 zii	Zodiac Inflight Innovations
 zinitix	Zinitix Co., Ltd
+zip	ZipCPU
 zkmagic	Shenzhen Zkmagic Technology Co., Ltd.
 zte	ZTE Corp.
 zyxel	ZyXEL Communications Corp.

@@ -50,6 +50,7 @@ zephyr_library_sources_ifdef(CONFIG_UART_XEN_HVC uart_hvc_xen.c)
 zephyr_library_sources_ifdef(CONFIG_UART_XEN_HVC_CONSOLEIO uart_hvc_xen_consoleio.c)
 zephyr_library_sources_ifdef(CONFIG_UART_PIPE uart_pipe.c)
 zephyr_library_sources_ifdef(CONFIG_UART_SMARTBOND uart_smartbond.c)
+zephyr_library_sources_ifdef(CONFIG_UART_ZIP_WBUART32 uart_zip_wbuart32.c)
 
 zephyr_library_sources_ifdef(CONFIG_USERSPACE   uart_handlers.c)
 

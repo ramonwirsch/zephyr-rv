@@ -1,0 +1,12 @@
+# Copyright (c) 2018 - 2019 Antmicro <www.antmicro.com>
+# SPDX-License-Identifier: Apache-2.0
+
+description: ZipCPU wbuart32
+
+compatible: "zip,wbuart32"
+
+include: uart-controller.yaml
+
+properties:
+    reg:
+      required: true
