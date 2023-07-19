@@ -3,3 +3,5 @@
 config BOARD
 	default "rs_rvcgra"
 
+config THREAD_LOCAL_STORAGE
+	default y
