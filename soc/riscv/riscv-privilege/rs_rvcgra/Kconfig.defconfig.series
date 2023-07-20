@@ -16,7 +16,7 @@ config RISCV_HAS_CPU_IDLE
 	default y
 
 config RISCV_HAS_PLIC
-	default y
+	default n
 
 config RISCV_GP
 	default y
