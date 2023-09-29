@@ -78,7 +78,9 @@ void arch_new_thread(struct k_thread *thread, k_thread_stack_t *stack,
 
 #if defined(CONFIG_USERSPACE)
 	/* Clear user thread context */
+#if defined(CONFIG_RISCV_PMP)
 	z_riscv_pmp_usermode_init(thread);
+#endif
 	thread->arch.priv_stack_start = 0;
 
 	/* the unwound stack pointer upon exiting exception */
@@ -238,9 +240,11 @@ FUNC_NORETURN void arch_user_mode_enter(k_thread_entry_t user_entry,
 	z_riscv_pmp_stackguard_prepare(_current);
 #endif
 
+#if defined(CONFIG_RISCV_PMP)
 	/* Set up Physical Memory Protection */
 	z_riscv_pmp_usermode_prepare(_current);
 	z_riscv_pmp_usermode_enable(_current);
+#endif
 
 	/* exception stack has to be in mscratch */
 	csr_write(mscratch, top_of_priv_stack);

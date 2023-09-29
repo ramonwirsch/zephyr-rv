@@ -96,9 +96,11 @@ skip_store_fp_callee_saved:
 	lb t0, _thread_offset_to_user_options(a0)
 	andi t0, t0, K_USER
 	beqz t0, not_user_task
+#if defined(CONFIG_RISCV_PMP)
 	mv s0, a0
 	call z_riscv_pmp_usermode_enable
 	mv a0, s0
+#endif
 not_user_task:
 #endif
 
