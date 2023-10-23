@@ -1,0 +1,46 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/dts-v1/;
+
+#include <rs_rvcgra.dtsi>
+#include <mem.h>
+
+/ {
+
+	soc {
+		scratch: scratch@80000000 {
+			device_type = "memory";
+			reg = < 0x80000000 DT_SIZE_K(128) >;
+		};
+	
+		dram0: dram@40000000 {
+			compatible = "zephyr,memory-region", "mmio-dram";
+			device_type = "memory";
+			reg = < 0x40000000 DT_SIZE_M(512) >; // currently limited by IO start at 0x6000_0000
+			zephyr,memory-region = "dram";
+		};
+	
+	};
+
+	chosen {
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,sram = &scratch;
+	};
+};
+
+&cpu0 {
+	clock-frequency = <10000000>;
+};
+
+&uart0 {
+	status = "okay";
+	clock-frequency = <10000000>;
+	current-speed = <115200>;
+};
+&uart1 {
+	status = "okay";
+	clock-frequency = <10000000>;
+	current-speed = <115200>;
+};
+

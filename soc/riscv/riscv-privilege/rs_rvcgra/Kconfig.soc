@@ -21,4 +21,14 @@ config SOC_RS_RVCGRA_IMAF
 	select RISCV_ISA_EXT_F
 	select CPU_HAS_FPU
 
+config SOC_RS_RVCGRA_IMAFC
+	bool "RS RV-CGRA SoC rv32imafc"
+	select ATOMIC_OPERATIONS_BUILTIN
+	select INCLUDE_RESET_VECTOR
+	select RISCV_ISA_EXT_M
+	select RISCV_ISA_EXT_A
+	select RISCV_ISA_EXT_F
+	select RISCV_ISA_EXT_C
+	select CPU_HAS_FPU
+
 endchoice

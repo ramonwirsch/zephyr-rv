@@ -1,7 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
+if BOARD_RS_RVCGRA_NEXYSVIDEO || BOARD_RS_RVCGRA_VC707
+
 config BOARD
-	default "rs_rvcgra"
+	default "rs_rvcgra_nexysvideo" if BOARD_RS_RVCGRA_NEXYSVIDEO
+	default "rs_rvcgra_vc707" if BOARD_RS_RVCGRA_VC707
 
 config THREAD_LOCAL_STORAGE
 	default y
+
+
+endif # BOARD_RS_RVCGRA_NEXYSVIDEO || BOARD_RS_RVCGRA_VC707

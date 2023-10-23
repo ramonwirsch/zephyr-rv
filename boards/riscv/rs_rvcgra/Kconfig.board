@@ -1,7 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
-config BOARD_RS_RVCGRA
-	bool "RS RV-CGRA board"
-	depends on SOC_SERIES_RISCV_RS_RVCGRA
+config BOARD_RS_RVCGRA_VC707
+	bool "RS RV-CGRA on Xilinx VC707"
+	depends on SOC_SERIES_RS_RVCGRA
 	select SOC_RISCV_RS_RVCGRA_IMA
 
+config BOARD_RS_RVCGRA_NEXYSVIDEO
+	bool "RS RV-CGRA on Digilent Nexys Video"
+	depends on SOC_SERIES_RS_RVCGRA
+	select SOC_RISCV_RS_RVCGRA_IMA

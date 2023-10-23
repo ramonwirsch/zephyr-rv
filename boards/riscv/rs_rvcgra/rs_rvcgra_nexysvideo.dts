@@ -3,18 +3,21 @@
 /dts-v1/;
 
 #include <rs_rvcgra.dtsi>
+#include <mem.h>
 
 / {
 
 	soc {
 		scratch: scratch@80000000 {
 			device_type = "memory";
-			reg = < 0x80000000 0x10000000 >;
+			reg = < 0x80000000 DT_SIZE_K(64) >;
 		};
 	
-		dram: dram@40000000 {
+		dram0: dram@40000000 {
+			compatible = "zephyr,memory-region", "mmio-dram";
 			device_type = "memory";
-			reg = < 0x40000000 0x20000000 >;
+			reg = < 0x40000000 DT_SIZE_M(512) >;
+			zephyr,memory-region = "dram";
 		};
 	
 	};
@@ -27,11 +30,17 @@
 };
 
 &cpu0 {
-	clock-frequency = <25000000>;
+	clock-frequency = <2500000>;
 };
 
 &uart0 {
 	status = "okay";
-	clock-frequency = <25000000>;
+	clock-frequency = <2500000>;
 	current-speed = <115200>;
 };
+&uart1 {
+	status = "okay";
+	clock-frequency = <2500000>;
+	current-speed = <115200>;
+};
+
