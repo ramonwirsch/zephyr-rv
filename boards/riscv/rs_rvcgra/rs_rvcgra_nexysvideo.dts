@@ -10,7 +10,7 @@
 	soc {
 		scratch: scratch@80000000 {
 			device_type = "memory";
-			reg = < 0x80000000 DT_SIZE_K(64) >;
+			reg = < 0x80000000 DT_SIZE_K(128) >;
 		};
 	
 		dram0: dram@40000000 {
