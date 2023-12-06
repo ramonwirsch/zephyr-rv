@@ -151,18 +151,20 @@ SECTION_FUNC(exception.entry, _isr_wrapper)
 	 * The scratch register now contains either the user mode stack
 	 * pointer, or 0 if entered from kernel mode. Retrieve that value
 	 * and zero the scratch register as we are in kernel mode now.
+	 * put user-mode stack-pointer into a1, so that it can be an argument for __soc_save_context as well. a1 is available in RV32E, unused and already saved here
 	 */
-	csrrw t0, mscratch, zero
-	bnez t0, 1f
+	csrrw a1, mscratch, zero
+	bnez a1, 1f
 
 	/* came from kernel mode: adjust stack value */
-	add t0, sp, __z_arch_esf_t_SIZEOF
+	add a1, sp, __z_arch_esf_t_SIZEOF
 1:
 	/* save stack value to be restored later */
-	sr t0, __z_arch_esf_t_sp_OFFSET(sp)
+	sr a1, __z_arch_esf_t_sp_OFFSET(sp)
 
 	/* Make sure tls pointer is sane */
 	lr t0, ___cpu_t_current_OFFSET(s0)
+	mv a2, tp /* save old tp in a2, in case __soc_save_context wants access to it, a2 is available in RV32E and not used above / until soc_save_context */
 	lr tp, _thread_offset_to_tls(t0)
 
 	/* Clear our per-thread usermode flag */
@@ -528,12 +530,6 @@ might_have_rescheduled:
 
 no_reschedule:
 
-#ifdef CONFIG_RISCV_SOC_CONTEXT_SAVE
-	/* Restore context at SOC level */
-	addi a0, sp, __z_arch_esf_t_soc_context_OFFSET
-	jal ra, __soc_restore_context
-#endif /* CONFIG_RISCV_SOC_CONTEXT_SAVE */
-
 	/* Restore MEPC register */
 	lr t0, __z_arch_esf_t_mepc_OFFSET(sp)
 	csrw mepc, t0
@@ -568,8 +564,8 @@ no_fp:	/* make sure this is reflected in the restored mstatus */
 	 * the stack pointer to be used with the next exception to come.
 	 */
 	li t1, MSTATUS_MPP
-	and t0, t2, t1
-	bnez t0, 1f
+	and a1, t2, t1
+	bnez a1, 1f
 
 #ifdef CONFIG_PMP_STACK_GUARD
 	/* Remove kernel stack guard and Reconfigure PMP for user mode */
@@ -588,6 +584,12 @@ no_fp:	/* make sure this is reflected in the restored mstatus */
 	csrw mscratch, t0
 1:
 #endif
+
+#ifdef CONFIG_RISCV_SOC_CONTEXT_SAVE
+	/* Restore context at SOC level */
+	addi a0, sp, __z_arch_esf_t_soc_context_OFFSET
+	jal ra, __soc_restore_context
+#endif /* CONFIG_RISCV_SOC_CONTEXT_SAVE */
 
 	/* Restore s0 (it is no longer ours) */
 	lr s0, __z_arch_esf_t_s0_OFFSET(sp)
