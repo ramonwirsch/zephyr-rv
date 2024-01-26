@@ -31,6 +31,7 @@
 
 	soc {
 		compatible = "simple-bus";
+		interrupt-parent = <&intc>;
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -40,12 +41,16 @@
 			status = "disabled";
 			reg = <0x60001000 16>;
 			label = "UART_0";
+			interrupts = <18>;
+			interrupt-names = "shared";
 		};
 		uart1: serial@60001020 {
 			compatible = "zip,wbuart32";
 			status = "disabled";
 			reg = <0x60001020 16>;
 			label = "UART_1";
+			interrupts = <17>;
+			interrupt-names = "shared";
 		};
 	};
 };

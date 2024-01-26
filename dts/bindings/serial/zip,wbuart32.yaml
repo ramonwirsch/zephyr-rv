@@ -10,3 +10,13 @@ include: uart-controller.yaml
 properties:
     reg:
       required: true
+
+    interrupts:
+      required: true
+
+    interrupt-names:
+      required: true
+
+    interrupt-no-autoenable:
+      type: boolean
+      required: false
