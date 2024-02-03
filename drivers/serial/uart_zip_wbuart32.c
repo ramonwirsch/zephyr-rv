@@ -17,6 +17,8 @@
 #define LGLEN_MASK          0xF
 #define TX_FILL_LEVEL_SHIFT 18
 #define RX_FILL_LEVEL_SHIFT 2
+#define TX_LGNL_SHIFT		28
+#define RX_LGNL_SHIFT		12
 #define FILL_LEVEL_MASK     0x3FF
 #define RX_DAT_INVALID      0x00000100
 #define RX_DAT_ERROR        0x00001600
@@ -40,7 +42,10 @@ struct uart_zip_wbuart32_config {
 };
 
 struct uart_zip_wbuart32_data {
+	uint32_t fifoStatCache;
 	uint32_t rxErrorFlags;
+	uint16_t maxTxBuf;
+	uint16_t maxRxBuf;
 };
 
 static int uart_zip_wbuart32_poll_in(const struct device *dev, unsigned char *c)
@@ -138,6 +143,32 @@ static int uart_zip_wbuart32_fifo_read(const struct device *dev, uint8_t *rx_dat
 	return i;
 }
 
+static int uart_zip_wbuart32_tx_complete(const struct device* dev) {
+	const struct uart_zip_wbuart32_config* config = dev->config;
+	const struct uart_zip_wbuart32_data* data = dev->data;
+
+	uint32_t fifoStat = sys_read32(config->base + UART_STATUS_REG);
+
+	int freeSpaces = (fifoStat >> TX_FILL_LEVEL_SHIFT) & FILL_LEVEL_MASK;
+	return freeSpaces == data->maxTxBuf;
+}
+
+static int uart_zip_wbuart32_tx_ready(const struct device* dev) {
+	const struct uart_zip_wbuart32_config* config = dev->config;
+
+	uint32_t fifoStat = sys_read32(config->base + UART_STATUS_REG);
+
+	return (fifoStat & TX_BUFFER_HAS_SPACE) != 0;
+}
+
+static int uart_zip_wbuart32_rx_ready(const struct device* dev) {
+	const struct uart_zip_wbuart32_config* config = dev->config;
+
+	uint32_t fifoStat = sys_read32(config->base + UART_STATUS_REG);
+
+	return (fifoStat & RX_BUFFER_HAS_DATA) != 0;
+}
+
 static void uart_zip_wbuart32_isr(const struct device *dev) {
 
 }
@@ -145,6 +176,14 @@ static void uart_zip_wbuart32_isr(const struct device *dev) {
 static int uart_zip_wbuart32_init(const struct device *dev)
 {
 	const struct uart_zip_wbuart32_config* config = dev->config;
+	struct uart_zip_wbuart32_data* data = dev->data;
+
+	uint32_t fifoStat = sys_read32(config->base + UART_STATUS_REG);
+	int rxLgnl = (fifoStat >> RX_LGNL_SHIFT) & LGLEN_MASK;
+	data->maxRxBuf = 1 << rxLgnl;
+	int txLgnl = (fifoStat >> TX_LGNL_SHIFT) & LGLEN_MASK;
+	data->maxTxBuf = 1 << txLgnl;
+
 
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
 	config->irq_config_func(dev);
@@ -158,6 +197,9 @@ static const struct uart_driver_api uart_zip_wbuart32_driver_api = {
 	.poll_out = uart_zip_wbuart32_poll_out,
 	.err_check = uart_zip_wbuart32_err_check,
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
+	.irq_tx_complete = uart_zip_wbuart32_tx_complete, // works without actually using interrupts, but structs must still be compiled for it
+	.irq_tx_ready = uart_zip_wbuart32_tx_ready,
+	.irq_rx_ready = uart_zip_wbuart32_rx_ready,
 	.fifo_fill = uart_zip_wbuart32_fifo_fill,
 	.fifo_read = uart_zip_wbuart32_fifo_read,
 #endif
@@ -199,7 +241,7 @@ static void uart_zip_wbuart32_irq_config_func_##index(const struct device *dev)	
 		.base = DT_INST_REG_ADDR(n),												\
 		.sysFreq = DT_INST_PROP(n, clock_frequency),								\
 		.baudrate = DT_INST_PROP_OR(n, current_speed, 0),							\
-		UART_ZIP_WBUART32_IRQ_SETUP_FUNC(n)										\
+		UART_ZIP_WBUART32_IRQ_SETUP_FUNC(n)											\
 	};																				\
 																					\
 	DEVICE_DT_INST_DEFINE(n,														\
