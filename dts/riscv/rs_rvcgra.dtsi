@@ -52,5 +52,11 @@
 			interrupts = <17>;
 			interrupt-names = "shared";
 		};
+
+		mtimer: timer@60002000 {
+			compatible = "neorv32-machine-timer";
+			reg = <0x60002000 0x10>;
+			interrupts = <7>;
+		};
 	};
 };
