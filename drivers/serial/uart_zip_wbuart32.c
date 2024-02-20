@@ -48,7 +48,7 @@ struct uart_zip_wbuart32_data {
 	uint16_t maxRxBuf;
 };
 
-static int uart_zip_wbuart32_poll_in(const struct device *dev, unsigned char *c)
+int uart_zip_wbuart32_poll_in(const struct device *dev, unsigned char *c)
 {
 	const struct uart_zip_wbuart32_config *config = dev->config;
 	
@@ -67,7 +67,7 @@ static int uart_zip_wbuart32_poll_in(const struct device *dev, unsigned char *c)
 	}
 }
 
-static void uart_zip_wbuart32_poll_out(const struct device *dev, unsigned char c)
+void uart_zip_wbuart32_poll_out(const struct device *dev, unsigned char c)
 {
 	const struct uart_zip_wbuart32_config *config = dev->config;
 	uint32_t baseAddr = config->base;
@@ -79,7 +79,7 @@ static void uart_zip_wbuart32_poll_out(const struct device *dev, unsigned char c
 
 
 
-static int uart_zip_wbuart32_err_check(const struct device *dev)
+int uart_zip_wbuart32_err_check(const struct device *dev)
 {
 	struct uart_zip_wbuart32_data* data = (struct uart_zip_wbuart32_data*)dev->data;
 
@@ -102,7 +102,7 @@ static int uart_zip_wbuart32_err_check(const struct device *dev)
 	return err;
 }
 
-static int uart_zip_wbuart32_fifo_fill(const struct device *dev, const uint8_t *tx_data, int len)
+int uart_zip_wbuart32_fifo_fill(const struct device *dev, const uint8_t *tx_data, int len)
 {
 	const struct uart_zip_wbuart32_config *config = dev->config;
 	uint32_t baseAddr = config->base;
@@ -120,7 +120,7 @@ static int uart_zip_wbuart32_fifo_fill(const struct device *dev, const uint8_t *
 	return byteCount;
 }
 
-static int uart_zip_wbuart32_fifo_read(const struct device *dev, uint8_t *rx_data, int size)
+int uart_zip_wbuart32_fifo_read(const struct device *dev, uint8_t *rx_data, int size)
 {
 	const struct uart_zip_wbuart32_config *config = dev->config;
 	uint32_t baseAddr = config->base;
@@ -143,7 +143,7 @@ static int uart_zip_wbuart32_fifo_read(const struct device *dev, uint8_t *rx_dat
 	return i;
 }
 
-static int uart_zip_wbuart32_tx_complete(const struct device* dev) {
+int uart_zip_wbuart32_tx_complete(const struct device* dev) {
 	const struct uart_zip_wbuart32_config* config = dev->config;
 	const struct uart_zip_wbuart32_data* data = dev->data;
 
@@ -153,7 +153,7 @@ static int uart_zip_wbuart32_tx_complete(const struct device* dev) {
 	return freeSpaces == data->maxTxBuf;
 }
 
-static int uart_zip_wbuart32_tx_ready(const struct device* dev) {
+int uart_zip_wbuart32_tx_ready(const struct device* dev) {
 	const struct uart_zip_wbuart32_config* config = dev->config;
 
 	uint32_t fifoStat = sys_read32(config->base + UART_STATUS_REG);
@@ -161,7 +161,7 @@ static int uart_zip_wbuart32_tx_ready(const struct device* dev) {
 	return (fifoStat & TX_BUFFER_HAS_SPACE) != 0;
 }
 
-static int uart_zip_wbuart32_rx_ready(const struct device* dev) {
+int uart_zip_wbuart32_rx_ready(const struct device* dev) {
 	const struct uart_zip_wbuart32_config* config = dev->config;
 
 	uint32_t fifoStat = sys_read32(config->base + UART_STATUS_REG);
@@ -182,7 +182,7 @@ static int uart_zip_wbuart32_init(const struct device *dev)
 	int rxLgnl = (fifoStat >> RX_LGNL_SHIFT) & LGLEN_MASK;
 	data->maxRxBuf = 1 << rxLgnl;
 	int txLgnl = (fifoStat >> TX_LGNL_SHIFT) & LGLEN_MASK;
-	data->maxTxBuf = 1 << txLgnl;
+	data->maxTxBuf = (1 << txLgnl) -1;
 
 
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
