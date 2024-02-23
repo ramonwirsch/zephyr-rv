@@ -315,12 +315,19 @@ void sys_trace_idle(void);
 #define sys_port_trace_k_timer_status_sync_blocking(timer, timeout)
 #define sys_port_trace_k_timer_status_sync_exit(timer, result)
 
-#define sys_port_trace_k_event_init(event)
-#define sys_port_trace_k_event_post_enter(event, events, events_mask)
-#define sys_port_trace_k_event_post_exit(event, events, events_mask)
-#define sys_port_trace_k_event_wait_enter(event, events, options, timeout)
-#define sys_port_trace_k_event_wait_blocking(event, events, options, timeout)
-#define sys_port_trace_k_event_wait_exit(event, events, ret)
+void sys_trace_k_event_init(struct k_event* event);
+void sys_trace_k_event_post_enter(struct k_event* event, uint32_t events, uint32_t events_mask);
+void sys_trace_k_event_post_exit(struct k_event* event, uint32_t events, uint32_t events_mask);
+void sys_trace_k_event_wait_enter(struct k_event* event, uint32_t events, unsigned int options, k_timeout_t timeout);
+void sys_trace_k_event_wait_blocking(struct k_event* event, uint32_t events, unsigned int options, k_timeout_t timeout);
+void sys_trace_k_event_wait_exit(struct k_event* event, uint32_t events, uint32_t ret);
+
+#define sys_port_trace_k_event_init(event) sys_trace_k_event_init(event)
+#define sys_port_trace_k_event_post_enter(event, events, events_mask) sys_trace_k_event_post_enter(event, events, events_mask)
+#define sys_port_trace_k_event_post_exit(event, events, events_mask) sys_trace_k_event_post_exit(event, events, events_mask)
+#define sys_port_trace_k_event_wait_enter(event, events, options, timeout) sys_trace_k_event_wait_enter(event, events, options, timeout)
+#define sys_port_trace_k_event_wait_blocking(event, events, options, timeout) sys_trace_k_event_wait_blocking(event, events, options, timeout)
+#define sys_port_trace_k_event_wait_exit(event, events, ret) sys_trace_k_event_wait_exit(event, events, ret)
 
 #define sys_port_trace_k_thread_abort_exit(thread)
 #define sys_port_trace_k_thread_abort_enter(thread)

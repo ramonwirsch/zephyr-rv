@@ -34,7 +34,10 @@ config MAX_IRQ_PER_AGGREGATOR
 	default 52
 
 config NUM_IRQS
-	default 64
+	default 32
+
+config ARCH_IRQ_VECTOR_TABLE_ALIGN
+	default 128
 
 config PMP_SLOTS
 	default 16

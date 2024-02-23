@@ -119,6 +119,7 @@ void sys_track_k_queue_init(struct k_queue *queue);
 #define sys_port_track_k_timer_stop(timer)
 #define sys_port_track_k_timer_start(timer, duration, period)
 #define sys_port_track_k_timer_init(timer)
+#define sys_port_track_k_event_init(event)
 #define sys_port_track_k_queue_peek_tail(queue, ret)
 #define sys_port_track_k_queue_peek_head(queue, ret)
 #define sys_port_track_k_queue_cancel_wait(queue)
