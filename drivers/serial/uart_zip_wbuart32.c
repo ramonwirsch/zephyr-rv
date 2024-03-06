@@ -31,21 +31,17 @@
 #define UART_STATUS_REG 0x4
 #define UART_RX_REG 0x8
 #define UART_TX_REG 0xC
+#define UART_INTR_REG 0x10
 
 struct uart_zip_wbuart32_config {
 	uint32_t base;
 	uint32_t sysFreq;
 	uint32_t baudrate;
+    uint8_t rxLglen;
+    uint8_t txLglen;
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
 	uart_irq_config_func_t irq_config_func;
 #endif
-};
-
-struct uart_zip_wbuart32_data {
-	uint32_t fifoStatCache;
-	uint32_t rxErrorFlags;
-	uint16_t maxTxBuf;
-	uint16_t maxRxBuf;
 };
 
 int uart_zip_wbuart32_poll_in(const struct device *dev, unsigned char *c)
@@ -120,27 +116,31 @@ int uart_zip_wbuart32_fifo_fill(const struct device *dev, const uint8_t *tx_data
 	return byteCount;
 }
 
-int uart_zip_wbuart32_fifo_read(const struct device *dev, uint8_t *rx_data, int size)
-{
+int uart_zip_wbuart32_fifo_read_impl(uint32_t baseAddr, uint8_t *rx_data, int size) {
+
+    uint32_t fifoStat = sys_read32(baseAddr + UART_STATUS_REG);
+
+    int avail = (fifoStat >> RX_FILL_LEVEL_SHIFT) & FILL_LEVEL_MASK;
+    int byteCount = MIN(size, avail);
+
+    int i;
+    for (i=0; i < byteCount; ++i) {
+        uint32_t d = sys_read32(baseAddr + UART_RX_REG);
+        if ((d & RX_DAT_INVALID) == 0) {
+            *rx_data++ = d & 0xFF;
+        } else {
+            break;
+        }
+    }
+
+    return i;
+}
+
+int uart_zip_wbuart32_fifo_read(const struct device *dev, uint8_t *rx_data, int size) {
 	const struct uart_zip_wbuart32_config *config = dev->config;
 	uint32_t baseAddr = config->base;
 
-	uint32_t fifoStat = sys_read32(baseAddr + UART_STATUS_REG);
-
-	int avail = (fifoStat >> RX_FILL_LEVEL_SHIFT) & FILL_LEVEL_MASK;
-	int byteCount = MIN(size, avail);
-
-	int i;
-	for (i=0; i < byteCount; ++i) {
-		uint32_t d = sys_read8(baseAddr + UART_RX_REG);
-		if ((d & RX_DAT_INVALID) == 0) {
-			*rx_data++ = d & 0xFF;
-		} else {
-			break;
-		}
-	}
-
-	return i;
+	return uart_zip_wbuart32_fifo_read_impl(baseAddr, rx_data, size);
 }
 
 int uart_zip_wbuart32_tx_complete(const struct device* dev) {
@@ -161,12 +161,31 @@ int uart_zip_wbuart32_tx_ready(const struct device* dev) {
 	return (fifoStat & TX_BUFFER_HAS_SPACE) != 0;
 }
 
+uint8_t uart_zip_wbuart32_rx_avail(uint32_t baseAddr) {
+    uint32_t fifoStat = sys_read32(baseAddr + UART_STATUS_REG);
+    return ((fifoStat >> RX_FILL_LEVEL_SHIFT) & FILL_LEVEL_MASK);
+}
+
 int uart_zip_wbuart32_rx_ready(const struct device* dev) {
 	const struct uart_zip_wbuart32_config* config = dev->config;
 
-	uint32_t fifoStat = sys_read32(config->base + UART_STATUS_REG);
+    return uart_zip_wbuart32_rx_avail(config->base) != 0;
+}
 
-	return (fifoStat & RX_BUFFER_HAS_DATA) != 0;
+void uart_zip_wbuart32_interrupt_enable(uint32_t baseAddr, struct uart_zip_wbuart32_data* data, uint8_t enable) {
+    uint8_t newMask = data->irqMask |= enable;
+    sys_write32(newMask, baseAddr + UART_INTR_REG);
+}
+
+void uart_zip_wbuart32_interrupt_enable_masked(uint32_t baseAddr, struct uart_zip_wbuart32_data* data, uint8_t enable, uint8_t mask) {
+    uint8_t newMask = (data->irqMask & ~mask) | (enable & mask);
+    data->irqMask = newMask;
+    sys_write32(newMask, baseAddr+UART_INTR_REG);
+}
+
+uint8_t uart_zip_wbuart32_interrupts_pending(uint32_t baseAddr) {
+    uint32_t intr = sys_read32(baseAddr + UART_INTR_REG);
+    return (intr >> 8) & 0xFF;
 }
 
 static void uart_zip_wbuart32_isr(const struct device *dev) {
@@ -183,6 +202,11 @@ static int uart_zip_wbuart32_init(const struct device *dev)
 	data->maxRxBuf = 1 << rxLgnl;
 	int txLgnl = (fifoStat >> TX_LGNL_SHIFT) & LGLEN_MASK;
 	data->maxTxBuf = (1 << txLgnl) -1;
+
+    if (rxLgnl != config->rxLglen || txLgnl != config->txLglen) {
+        LOG_ERR("DT does not match device tree for dev 0x%08x: DTvsAct RX 0x%x 0x%x TX 0x%x 0x%x", (uint32_t)dev, config->rxLglen, rxLgnl, config->txLglen, txLgnl);
+        k_fatal_halt(0x77627561); // spells "wbua" in ascii
+    }
 
 
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
@@ -240,7 +264,9 @@ static void uart_zip_wbuart32_irq_config_func_##index(const struct device *dev)	
 	static const struct uart_zip_wbuart32_config uart_zip_wbuart32_##n##_cfg = {	\
 		.base = DT_INST_REG_ADDR(n),												\
 		.sysFreq = DT_INST_PROP(n, clock_frequency),								\
-		.baudrate = DT_INST_PROP_OR(n, current_speed, 0),							\
+		.baudrate = DT_INST_PROP_OR(n, current_speed, 0),                           \
+        .rxLglen = DT_INST_PROP(n, rx_fifo_lglen),                                  \
+        .txLglen = DT_INST_PROP(n, tx_fifo_lglen),                                  \
 		UART_ZIP_WBUART32_IRQ_SETUP_FUNC(n)											\
 	};																				\
 																					\

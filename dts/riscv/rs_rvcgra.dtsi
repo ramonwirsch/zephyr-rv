@@ -43,6 +43,8 @@
 			label = "UART_0";
 			interrupts = <18>;
 			interrupt-names = "shared";
+			rx-fifo-lglen = <5>;
+			tx-fifo-lglen = <5>;
 		};
 		uart1: serial@60001020 {
 			compatible = "zip,wbuart32";
@@ -51,6 +53,8 @@
 			label = "UART_1";
 			interrupts = <17>;
 			interrupt-names = "shared";
+			rx-fifo-lglen = <5>;
+			tx-fifo-lglen = <5>;
 		};
 
 		mtimer: timer@60002000 {

@@ -20,3 +20,11 @@ properties:
     interrupt-no-autoenable:
       type: boolean
       required: false
+
+    rx-fifo-lglen:
+      type: int
+      required: true
+
+    tx-fifo-lglen:
+      type: int
+      required: true
