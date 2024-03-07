@@ -2,8 +2,8 @@
 // Created by ray on 2/28/24.
 //
 
-#ifndef CGRA_OS_UART_ZIP_WBUART32_C_H
-#define CGRA_OS_UART_ZIP_WBUART32_C_H
+#ifndef CGRA_OS_UART_ZIP_WBUART32_H
+#define CGRA_OS_UART_ZIP_WBUART32_H
 
 #define UART_ZIP_WBUART_IRQ_TX_SPACE 0x4
 #define UART_ZIP_WBUART_IRQ_TX_HALF  0x8
@@ -35,4 +35,4 @@ int uart_zip_wbuart32_tx_complete(const struct device *dev);
 
 uint8_t uart_zip_wbuart32_rx_avail(uint32_t baseAddr);
 
-#endif //CGRA_OS_UART_ZIP_WBUART32_C_H
+#endif //CGRA_OS_UART_ZIP_WBUART32_H

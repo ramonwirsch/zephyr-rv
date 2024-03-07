@@ -11,6 +11,9 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
 #include <soc.h>
+#include <zephyr/drivers/uart/uart_zip_wbuart32.h>
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(zWbUart, LOG_LEVEL_ERR);
 
 #define TX_BUFFER_HAS_SPACE 0x00010000
 #define RX_BUFFER_HAS_DATA  0x00000001
