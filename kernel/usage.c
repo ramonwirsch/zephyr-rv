@@ -220,7 +220,6 @@ void z_sched_thread_usage(struct k_thread *thread,
 #ifdef CONFIG_SCHED_THREAD_USAGE_ALL
 	stats->idle_cycles = 0;
 #endif
-	stats->execution_cycles = thread->base.usage.total;
 
 	k_spin_unlock(&usage_lock, key);
 }
