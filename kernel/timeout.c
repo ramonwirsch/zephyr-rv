@@ -6,6 +6,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/spinlock.h>
+#include <zephyr/device.h>
 #include <ksched.h>
 #include <zephyr/timeout_q.h>
 #include <zephyr/syscall_handler.h>
@@ -35,6 +36,16 @@ static inline int z_vrfy_sys_clock_hw_cycles_per_sec_runtime_get(void)
 #include <syscalls/sys_clock_hw_cycles_per_sec_runtime_get_mrsh.c>
 #endif /* CONFIG_USERSPACE */
 #endif /* CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME */
+
+static int init_timeout(const struct device *dev) {
+	ARG_UNUSED(dev);
+
+	sys_dlist_init(&timeout_list);
+
+	return 0;
+}
+
+SYS_INIT(init_timeout, PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);
 
 static struct _timeout *first(void)
 {

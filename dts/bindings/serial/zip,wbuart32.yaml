@@ -17,7 +17,7 @@ properties:
     interrupt-names:
       required: true
 
-    interrupt-no-autoenable:
+    interrupt-no-connect-driver:
       type: boolean
       required: false
 

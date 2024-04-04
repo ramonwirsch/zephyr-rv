@@ -47,7 +47,9 @@ FUNC_NORETURN void z_riscv_fatal_error(unsigned int reason,
 		LOG_ERR("     a7: " PR_REG, esf->a7);
 #endif /* CONFIG_RISCV_ISA_RV32E */
 #ifdef CONFIG_USERSPACE
-		LOG_ERR("     sp: " PR_REG, esf->sp);
+		LOG_ERR("     sp: " PR_REG, esf->sp); // stored separately, because it will not be written ontop of usermode threads
+#else
+		LOG_ERR("     sp: " PR_REG, (uint32_t)(esf + sizeof(z_arch_esf_t));); // esf is on top of machine-stack. Always
 #endif
 		LOG_ERR("     ra: " PR_REG, esf->ra);
 		LOG_ERR("   mepc: " PR_REG, esf->mepc);

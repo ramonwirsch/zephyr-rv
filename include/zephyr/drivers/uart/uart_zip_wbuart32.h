@@ -10,13 +10,7 @@
 #define UART_ZIP_WBUART_IRQ_RX_ANY   0x1
 #define UART_ZIP_WBUART_IRQ_RX_HALF  0x2
 
-struct uart_zip_wbuart32_data {
-    uint32_t fifoStatCache;
-    uint32_t rxErrorFlags;
-    uint16_t maxTxBuf;
-    uint16_t maxRxBuf;
-    uint8_t irqMask;
-};
+struct uart_zip_wbuart32_data;
 
 void uart_zip_wbuart32_interrupt_enable(uint32_t baseAddr, struct uart_zip_wbuart32_data* data, uint8_t enable);
 

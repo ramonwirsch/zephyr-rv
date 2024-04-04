@@ -31,6 +31,7 @@ struct riscv_arch_block {
 		uint32_t t6;
 #endif /* !CONFIG_RISCV_ISA_RV32E */
 		uint32_t pc;
+		uint32_t sp;
 	} r;
 } __packed;
 
@@ -79,6 +80,11 @@ void arch_coredump_info_dump(const z_arch_esf_t *esf)
 	arch_blk.r.a7 = esf->a7;
 #endif /* !CONFIG_RISCV_ISA_RV32E */
 	arch_blk.r.pc = esf->mepc;
+#ifdef CONFIG_USERSPACE
+	arch_blk.r.sp = esf->sp;
+#else
+	arch_blk.r.sp = (uint32_t)(esf + sizeof(z_arch_esf_t));
+#endif
 
 	/* Send for output */
 	coredump_buffer_output((uint8_t *)&hdr, sizeof(hdr));

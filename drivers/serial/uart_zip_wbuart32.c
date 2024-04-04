@@ -42,9 +42,31 @@ struct uart_zip_wbuart32_config {
 	uint32_t baudrate;
     uint8_t rxLglen;
     uint8_t txLglen;
-#ifdef CONFIG_UART_INTERRUPT_DRIVEN
+#if defined(CONFIG_UART_INTERRUPT_DRIVEN) || defined(CONFIG_UART_ASYNC_API)
 	uart_irq_config_func_t irq_config_func;
+	int16_t irq_idx;
 #endif
+};
+
+struct uart_zip_wbuart_tx_queue {
+	const uint8_t* orgPtr;
+	uint16_t orgBytes;
+	uint16_t sentBytes;
+};
+
+struct uart_zip_wbuart32_data {
+    uint32_t fifoStatCache;
+    uint32_t rxErrorFlags;
+    uint16_t maxTxBuf;
+    uint16_t maxRxBuf;
+    uint8_t irqMask;
+
+#ifdef CONFIG_UART_ASYNC_API
+    void (*async_callback)(const struct device *dev, struct uart_event *evt, void *user_data);
+	void* async_user;
+    struct uart_zip_wbuart_tx_queue txState;
+#endif
+
 };
 
 int uart_zip_wbuart32_poll_in(const struct device *dev, unsigned char *c)
@@ -191,9 +213,101 @@ uint8_t uart_zip_wbuart32_interrupts_pending(uint32_t baseAddr) {
     return (intr >> 8) & 0xFF;
 }
 
-static void uart_zip_wbuart32_isr(const struct device *dev) {
+#if defined(CONFIG_UART_INTERRUPT_DRIVEN) || defined(CONFIG_UART_ASYNC_API)
 
+static struct uart_event asyncEvtHolder;
+
+static void uart_zip_wbuart32_async_sendTxDone(const struct device *dev, struct uart_zip_wbuart32_data *data, const uint8_t* buf, uint16_t len) {
+	if (data->async_callback) {
+		asyncEvtHolder.type = UART_TX_DONE;
+		asyncEvtHolder.data.tx.buf = buf;
+		asyncEvtHolder.data.tx.len = len;
+		data->async_callback(dev, &asyncEvtHolder, data->async_user);
+	}
 }
+
+static void uart_zip_wbuart32_isr(const struct device *dev) {
+	struct uart_zip_wbuart32_data *data = dev->data;
+	const struct uart_zip_wbuart32_config *config = dev->config;
+
+#ifdef CONFIG_UART_ASYNC_API
+	uint16_t orgTxLen = data->txState.orgBytes;
+	if (orgTxLen) {
+		uint16_t sentTxLen = data->txState.sentBytes;
+		uint16_t remLen = orgTxLen-sentTxLen;
+		int nextSent = uart_zip_wbuart32_fifo_fill(dev, data->txState.orgPtr+sentTxLen, remLen);
+		uint16_t totalSentLen = sentTxLen + nextSent;
+		if (totalSentLen == orgTxLen) { // done
+			data->txState.orgBytes = 0;
+			uart_zip_wbuart32_interrupt_enable_masked(config->base, data, 0, UART_ZIP_WBUART_IRQ_TX_HALF | UART_ZIP_WBUART_IRQ_TX_SPACE);
+			const uint8_t* ptr = data->txState.orgPtr;
+			data->txState.orgPtr = NULL;
+			data->txState.sentBytes = 0;
+			
+			uart_zip_wbuart32_async_sendTxDone(dev, data, ptr, totalSentLen);
+		} else {
+			data->txState.sentBytes = totalSentLen;
+		}
+	}
+#endif
+}
+
+int uart_zip_wbuart32_async_tx(const struct device *dev, const uint8_t *buf, size_t len, int32_t timeout) {
+	struct uart_zip_wbuart32_data *data = dev->data;
+	const struct uart_zip_wbuart32_config *config = dev->config;
+	ARG_UNUSED(timeout); //TODO
+
+	if (data->txState.orgBytes) {
+		return -EBUSY;
+	}
+
+	int alreadyDone = uart_zip_wbuart32_fifo_fill(dev, buf, len);
+
+	if (alreadyDone >= len) {
+		uart_zip_wbuart32_async_sendTxDone(dev, data, buf, len);
+		return 0;
+	} else {
+		data->txState.orgPtr = buf;
+		data->txState.orgBytes = len;
+		data->txState.sentBytes = alreadyDone;
+		
+		uart_zip_wbuart32_interrupt_enable_masked(config->base, data, UART_ZIP_WBUART_IRQ_TX_HALF, UART_ZIP_WBUART_IRQ_TX_HALF | UART_ZIP_WBUART_IRQ_TX_SPACE);
+		return 0;
+	}
+}
+
+int uart_zip_wbuart32_async_tx_abort(const struct device *dev) {
+	struct uart_zip_wbuart32_data *data = dev->data;
+	const struct uart_zip_wbuart32_config *config = dev->config;
+
+	if (data->txState.orgBytes) { // ongoing transmission
+		uart_zip_wbuart32_interrupt_enable_masked(config->base, data, 0, UART_ZIP_WBUART_IRQ_TX_HALF | UART_ZIP_WBUART_IRQ_TX_SPACE);
+		data->txState.orgBytes = 0;
+		const uint8_t* ptr = data->txState.orgPtr;
+		uint16_t sent = data->txState.sentBytes;
+		data->txState.orgPtr = NULL;
+		data->txState.sentBytes = 0;
+		uart_zip_wbuart32_async_sendTxDone(dev, data, ptr, sent);
+		return 0;
+	} else {
+		return -EFAULT;
+	}
+}
+
+int uart_zip_wbuart32_async_callback_set(const struct device *dev, uart_callback_t callback, void *user_data) {
+	struct uart_zip_wbuart32_data *data = dev->data;
+	const struct uart_zip_wbuart32_config *config = dev->config;
+
+	if (config->irq_config_func) {
+
+		data->async_callback = callback;
+		data->async_user = user_data;
+	}
+
+	return 0;
+}
+
+#endif
 
 static int uart_zip_wbuart32_init(const struct device *dev)
 {
@@ -211,9 +325,12 @@ static int uart_zip_wbuart32_init(const struct device *dev)
         k_fatal_halt(0x77627561); // spells "wbua" in ascii
     }
 
+	uart_zip_wbuart32_interrupt_enable_masked(config->base, data, 0, 0xFF);
 
-#ifdef CONFIG_UART_INTERRUPT_DRIVEN
-	config->irq_config_func(dev);
+#if defined(CONFIG_UART_INTERRUPT_DRIVEN) || defined(CONFIG_UART_ASYNC_API)
+	if (config->irq_config_func) {
+		config->irq_config_func(dev); // calls IRQ_CONNECT for the ISR-tables, does not yet enable the interrupt
+	}
 #endif
 
 	return 0;
@@ -224,40 +341,57 @@ static const struct uart_driver_api uart_zip_wbuart32_driver_api = {
 	.poll_out = uart_zip_wbuart32_poll_out,
 	.err_check = uart_zip_wbuart32_err_check,
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
-	.irq_tx_complete = uart_zip_wbuart32_tx_complete, // works without actually using interrupts, but structs must still be compiled for it
-	.irq_tx_ready = uart_zip_wbuart32_tx_ready,
-	.irq_rx_ready = uart_zip_wbuart32_rx_ready,
 	.fifo_fill = uart_zip_wbuart32_fifo_fill,
 	.fifo_read = uart_zip_wbuart32_fifo_read,
+	.irq_tx_enable = NULL,
+	.irq_tx_disable = NULL,
+	.irq_tx_ready = uart_zip_wbuart32_tx_ready,
+	.irq_rx_enable = NULL,
+	.irq_rx_disable = NULL,
+	.irq_tx_complete = uart_zip_wbuart32_tx_complete, // works without actually using interrupts, but structs must still be compiled for it
+	.irq_rx_ready = uart_zip_wbuart32_rx_ready,
+	.irq_err_enable = NULL,
+	.irq_err_disable = NULL,
+	.irq_is_pending = NULL,
+	.irq_update = NULL,
+	.irq_callback_set = NULL,
+#endif
+#ifdef CONFIG_UART_ASYNC_API
+	.callback_set = uart_zip_wbuart32_async_callback_set,
+	.tx = uart_zip_wbuart32_async_tx,
+	.tx_abort = uart_zip_wbuart32_async_tx_abort,
+	.rx_enable = NULL,
+	.rx_buf_rsp = NULL,
+	.rx_disable = NULL,
 #endif
 };
 
-#ifdef CONFIG_UART_INTERRUPT_DRIVEN
+#if defined(CONFIG_UART_INTERRUPT_DRIVEN) || defined(CONFIG_UART_ASYNC_API)
 #define UART_ZIP_WBUART32_IRQ_SETUP_DECL(index)				\
 	static void uart_zip_wbuart32_irq_config_func_##index(const struct device *dev);
 
-#define UART_ZIP_WBUART32_IRQ_SETUP(index)									\
-static void uart_zip_wbuart32_irq_config_func_##index(const struct device *dev)	\
-{																\
+#define UART_ZIP_WBUART32_IRQ_SETUP_IMPL_CONNECT(index)									\
+static void uart_zip_wbuart32_irq_config_func_##index(const struct device *dev)	{ \
 	IRQ_CONNECT(DT_INST_IRQN(index),							\
 		DT_INST_IRQ(index, priority),							\
 		uart_zip_wbuart32_isr, DEVICE_DT_INST_GET(index),		\
 		0);														\
-	if (!DT_INST_PROP_OR(index, interrupt_no_autoenable, 0))		\
-		irq_enable(DT_INST_IRQN(index));						\
+	irq_enable(DT_INST_IRQN(index));							\
 }
 
-#define UART_ZIP_WBUART32_IRQ_SETUP_FUNC(index)					\
-	.irq_config_func = uart_zip_wbuart32_irq_config_func_##index
+#define UART_ZIP_WBUART32_IRQ_SETUP_IMPL_NO_CONNECT(index)									\
+static void uart_zip_wbuart32_irq_config_func_##index(const struct device *dev)	{}
+
+#define UART_ZIP_WBUART32_IRQ_SETUP_IMPL(index) COND_CODE_0(DT_INST_PROP_OR(index, interrupt_no_connect_driver, 0), (UART_ZIP_WBUART32_IRQ_SETUP_IMPL_CONNECT), (UART_ZIP_WBUART32_IRQ_SETUP_IMPL_NO_CONNECT))(index)
+
+#define UART_ZIP_WBUART32_IRQ_SETUP(index)					\
+	.irq_config_func = DT_INST_PROP_OR(index, interrupt_no_connect_driver, 0)? NULL : uart_zip_wbuart32_irq_config_func_##index
 
 #else
 #define UART_ZIP_WBUART32_IRQ_SETUP_DECL(index) /* Not used */
-#define UART_ZIP_WBUART32_IRQ_SETUP(index) UART_ZIP_WBUART32_IRQ_SETUP_0(index)
-#define UART_ZIP_WBUART32_IRQ_SETUP_FUNC(index) UART_ZIP_WBUART32_IRQ_SETUP_FUNC_0(index)
+#define UART_ZIP_WBUART32_IRQ_SETUP_IMPL(index) /* Not used */
+#define UART_ZIP_WBUART32_IRQ_SETUP(index) /* Not used */
 #endif
-
-#define UART_ZIP_WBUART32_IRQ_SETUP_0(index) /* Not used */
-#define UART_ZIP_WBUART32_IRQ_SETUP_FUNC_0(index) /* Not used */
 
 #define UART_ZIP_WBUART32_INIT(n)												\
 	UART_ZIP_WBUART32_IRQ_SETUP_DECL(n)											\
@@ -270,7 +404,7 @@ static void uart_zip_wbuart32_irq_config_func_##index(const struct device *dev)	
 		.baudrate = DT_INST_PROP_OR(n, current_speed, 0),                           \
         .rxLglen = DT_INST_PROP(n, rx_fifo_lglen),                                  \
         .txLglen = DT_INST_PROP(n, tx_fifo_lglen),                                  \
-		UART_ZIP_WBUART32_IRQ_SETUP_FUNC(n)											\
+		UART_ZIP_WBUART32_IRQ_SETUP(n)											\
 	};																				\
 																					\
 	DEVICE_DT_INST_DEFINE(n,														\
@@ -282,6 +416,6 @@ static void uart_zip_wbuart32_irq_config_func_##index(const struct device *dev)	
 				CONFIG_SERIAL_INIT_PRIORITY,										\
 				&uart_zip_wbuart32_driver_api);										\
 																					\
-	UART_ZIP_WBUART32_IRQ_SETUP(n)
+	UART_ZIP_WBUART32_IRQ_SETUP_IMPL(n)
 
 DT_INST_FOREACH_STATUS_OKAY(UART_ZIP_WBUART32_INIT)
