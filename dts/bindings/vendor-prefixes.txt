@@ -614,6 +614,7 @@ tq	TQ-Systems GmbH
 tronfy	Tronfy
 tronsmart	Tronsmart
 truly	Truly Semiconductors Limited
+tudrs	Computer Systems Group, TU Darmstadt
 visionox	Visionox
 tsd	Theobroma Systems Design und Consulting GmbH
 tyan	Tyan Computer Corporation

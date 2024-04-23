@@ -1,0 +1,10 @@
+# Copyright (c) 2020, FrankLi Limited
+# SPDX-License-Identifier: Apache-2.0
+
+description: RS Simple Framebuffer
+
+compatible: "tudrs,simple-framebuffer"
+
+include: base.yaml
+
+

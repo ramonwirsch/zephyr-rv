@@ -20,6 +20,12 @@
 			#address-cells = < 1 >;
 			#size-cells = < 1 >;
 		};
+
+		hdmi0: hdmi@60001040 {
+			compatible = "tudrs,simple-framebuffer";
+			reg = <0x60001040 16>;
+			label = "HDMI_0";
+		};
 	
 	};
 
